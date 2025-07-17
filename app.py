@@ -1,6 +1,6 @@
 import eventlet
 eventlet.monkey_patch()  # MUST be at the top BEFORE any other imports
-
+import os
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit, join_room
 
