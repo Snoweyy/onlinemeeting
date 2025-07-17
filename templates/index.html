@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Bro Meet</title>
+  <style>
+    video {
+      width: 45%;
+      margin: 10px;
+      border: 2px solid #444;
+      border-radius: 10px;
+    }
+    body {
+      text-align: center;
+      font-family: Arial;
+      background: #f4f4f4;
+    }
+    input {
+      padding: 8px;
+      font-size: 16px;
+    }
+    button {
+      padding: 10px;
+      font-size: 16px;
+      margin-left: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎥 Bro Meet</h1>
+  <div>
+    <input type="text" id="roomInput" placeholder="Enter Room ID">
+    <button onclick="joinRoom()">Join</button>
+  </div>
+  <div>
+    <video id="localVideo" autoplay muted></video>
+    <video id="remoteVideo" autoplay></video>
+    <div>
+  <button onclick="toggleMic()">🎤 Mic On/Off</button>
+  <button onclick="toggleCamera()">📷 Video On/Off</button>
+  <button onclick="shareScreen()">🖥️ Share Screen</button>
+
+</div>
+
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="/static/script.js"></script>
+</body>
+</html>
