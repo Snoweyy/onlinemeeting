@@ -1,4 +1,4 @@
-const socket = io();
+const socket = io("https://your-render-url.onrender.com");  // ✅ Use your actual deployed backend URL
 let localStream;
 let peerConnection;
 let roomId;
