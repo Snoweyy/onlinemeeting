@@ -27,4 +27,5 @@ def handle_signal(data):
     emit('signal', data, room=room, include_self=False)
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    port = int(os.environ.get("PORT", 5000))  # Default to 5000 if not set
+    socketio.run(app, host='0.0.0.0', port=port)
