@@ -10,12 +10,12 @@ const configuration = {
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
 
-function joinRoom() {
+async function joinRoom() {
   roomId = document.getElementById("roomInput").value;
   if (!roomId) return alert("Enter a room ID");
 
-  socket.emit("join-room", { room: roomId });
-  initCamera();
+  await initCamera();  // ✅ wait for camera first
+  socket.emit("join-room", { room: roomId });  // ✅ then join room
 }
 
 socket.on("user-joined", () => {
@@ -35,6 +35,7 @@ socket.on("signal", async (data) => {
   } else if (data.candidate) {
     await peerConnection.addIceCandidate(data.candidate);
   }
+  console.log("Received signal:", data);
 });
 
 async function initCamera() {
@@ -57,6 +58,8 @@ function createPeer(isCaller) {
     if (event.candidate) {
       socket.emit("signal", { room: roomId, candidate: event.candidate });
     }
+    console.log(isCaller ? "Creating offer..." : "Waiting for offer...");
+
   };
 
   if (isCaller) {
