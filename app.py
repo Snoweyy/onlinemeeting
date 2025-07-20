@@ -1,28 +1,61 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Bro Meet - Modern Multi-User Video Conference Platform
+Compatible with Python 3.12+ and optimized for Render.com deployment
+"""
+
 import eventlet
+# Patch before importing anything else
 eventlet.monkey_patch()
 
 import os
+import sys
 import uuid
 import logging
-from flask import Flask, render_template, request
-from flask_socketio import SocketIO, join_room, leave_room, emit
+from datetime import datetime, timezone
+from typing import Dict, Any, Optional
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+from flask import Flask, render_template, request, jsonify
+from flask_socketio import SocketIO, join_room, leave_room, emit, disconnect
+
+# Configure logging for production
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
 logger = logging.getLogger(__name__)
 
+# Initialize Flask app with modern configuration
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-change-this-in-production')
+app.config.update(
+    SECRET_KEY=os.environ.get('SECRET_KEY', 'bro-meet-secret-key-change-in-production'),
+    DEBUG=os.environ.get('FLASK_DEBUG', 'False').lower() == 'true',
+    TESTING=False,
+    # Security headers
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax'
+)
 
-# Initialize SocketIO with modern configuration
+# Get port from environment (Render sets PORT)
+port = int(os.environ.get('PORT', 5000))
+
+# Initialize SocketIO with production-ready configuration
 socketio = SocketIO(
-    app, 
-    cors_allowed_origins="*", 
+    app,
+    cors_allowed_origins="*",
     async_mode="eventlet",
-    logger=True,
-    engineio_logger=True,
+    logger=app.config['DEBUG'],
+    engineio_logger=app.config['DEBUG'],
     ping_timeout=60,
-    ping_interval=25
+    ping_interval=25,
+    max_http_buffer_size=1e6,  # 1MB
+    allow_upgrades=True,
+    transports=['websocket', 'polling']
 )
 
 # Store room participants and their info
@@ -157,8 +190,62 @@ def stop_screen_share(data):
         rooms[room]["screen_sharer"] = None
         emit("screen-share-stopped", {"userId": user_id}, room=room)
 
-if __name__ == "__main__":
-    import os
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
+# Health check endpoint for Render
+@app.route('/health')
+def health_check():
+    """Health check endpoint for monitoring"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now(timezone.utc).isoformat(),
+        'version': '2.0.0',
+        'rooms': len(rooms),
+        'total_users': sum(len(room['users']) for room in rooms.values())
+    })
 
-#2st4aafu8Ph5ubdhMFSxeas7QIO_6GzcwQTXZkVSKa6Vgyi3c
+@app.errorhandler(404)
+def not_found(error):
+    """Handle 404 errors"""
+    return render_template('index.html'), 200  # Redirect to main app
+
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 errors"""
+    logger.error(f"Internal server error: {error}")
+    return jsonify({'error': 'Internal server error'}), 500
+
+# Disconnect handler for cleanup
+@socketio.on('disconnect')
+def handle_disconnect():
+    """Clean up when user disconnects"""
+    logger.info(f"Client {request.sid} disconnected")
+    # Clean up user from all rooms
+    for room_id, room_data in list(rooms.items()):
+        for user_id, user_data in list(room_data['users'].items()):
+            if user_data['socket_id'] == request.sid:
+                logger.info(f"Removing user {user_id} from room {room_id}")
+                if room_data['screen_sharer'] == user_id:
+                    room_data['screen_sharer'] = None
+                    emit('screen-share-stopped', {'userId': user_id}, room=room_id)
+                del room_data['users'][user_id]
+                emit('user-left', {'userId': user_id}, room=room_id)
+                if not room_data['users']:
+                    del rooms[room_id]
+                break
+
+def create_app():
+    """Application factory for production deployment"""
+    return app
+
+if __name__ == "__main__":
+    logger.info(f"Starting Bro Meet server on port {port}")
+    logger.info(f"Python version: {sys.version}")
+    logger.info(f"Debug mode: {app.config['DEBUG']}")
+    
+    socketio.run(
+        app,
+        host='0.0.0.0',
+        port=port,
+        debug=app.config['DEBUG'],
+        use_reloader=False,  # Disable for production
+        log_output=True
+    )

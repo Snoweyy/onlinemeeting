@@ -1,10 +1,18 @@
 services:
   - type: web
-    name: bro-meet
-    env: python
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "python app.py"
+    name: bro-meet-conference
+    runtime: python
     plan: free
+    buildCommand: |
+      pip install --upgrade pip setuptools wheel
+      pip install -r requirements.txt
+    startCommand: "gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT wsgi:application"
+    healthCheckPath: /health
+    autoDeploy: true
     environmentVariables:
       - key: PYTHON_VERSION
-        value: 3.11.9
+        value: 3.12.8
+      - key: FLASK_DEBUG
+        value: false
+      - key: SECRET_KEY
+        generateValue: true
