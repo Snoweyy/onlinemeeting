@@ -1,12 +1,29 @@
 import eventlet
 eventlet.monkey_patch()
 
+import os
+import uuid
+import logging
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, join_room, leave_room, emit
-import uuid
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-change-this-in-production')
+
+# Initialize SocketIO with modern configuration
+socketio = SocketIO(
+    app, 
+    cors_allowed_origins="*", 
+    async_mode="eventlet",
+    logger=True,
+    engineio_logger=True,
+    ping_timeout=60,
+    ping_interval=25
+)
 
 # Store room participants and their info
 rooms = {}
@@ -17,35 +34,49 @@ def index():
 
 @socketio.on("join-room")
 def join(data):
-    room = data["room"]
-    user_id = data.get("userId", str(uuid.uuid4()))
-    username = data.get("username", f"User_{user_id[:8]}")
-    
-    join_room(room)
-    
-    # Initialize room if it doesn't exist
-    if room not in rooms:
-        rooms[room] = {"users": {}, "screen_sharer": None}
-    
-    # Add user to room
-    rooms[room]["users"][user_id] = {
-        "username": username,
-        "socket_id": request.sid
-    }
-    
-    # Notify others and send current room state
-    emit("user-joined", {
-        "userId": user_id, 
-        "username": username,
-        "roomUsers": list(rooms[room]["users"].keys()),
-        "screenSharer": rooms[room]["screen_sharer"]
-    }, room=room)
-    
-    # Send current users list to the new user
-    emit("room-users", {
-        "users": rooms[room]["users"],
-        "screenSharer": rooms[room]["screen_sharer"]
-    })
+    try:
+        room = data.get("room")
+        user_id = data.get("userId", str(uuid.uuid4()))
+        username = data.get("username", f"User_{user_id[:8]}")
+        
+        if not room:
+            logger.error("No room specified in join request")
+            return
+        
+        logger.info(f"User {username} ({user_id}) joining room {room}")
+        
+        join_room(room)
+        
+        # Initialize room if it doesn't exist
+        if room not in rooms:
+            rooms[room] = {"users": {}, "screen_sharer": None}
+            logger.info(f"Created new room: {room}")
+        
+        # Add user to room
+        rooms[room]["users"][user_id] = {
+            "username": username,
+            "socket_id": request.sid
+        }
+        
+        logger.info(f"Room {room} now has {len(rooms[room]['users'])} users")
+        
+        # Notify others and send current room state
+        emit("user-joined", {
+            "userId": user_id, 
+            "username": username,
+            "roomUsers": list(rooms[room]["users"].keys()),
+            "screenSharer": rooms[room]["screen_sharer"]
+        }, room=room)
+        
+        # Send current users list to the new user
+        emit("room-users", {
+            "users": rooms[room]["users"],
+            "screenSharer": rooms[room]["screen_sharer"]
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in join-room: {str(e)}")
+        emit("error", {"message": "Failed to join room"})
 
 @socketio.on("leave-room")
 def leave(data):
@@ -129,3 +160,5 @@ def stop_screen_share(data):
 if __name__ == "__main__":
     import os
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)
+
+#2st4aafu8Ph5ubdhMFSxeas7QIO_6GzcwQTXZkVSKa6Vgyi3c
