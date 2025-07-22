@@ -5,9 +5,9 @@ Bro Meet - Modern Multi-User Video Conference Platform
 Compatible with Python 3.12+ and optimized for Render.com deployment
 """
 
-import eventlet
+# import eventlet
 # Patch before importing anything else
-eventlet.monkey_patch()
+# eventlet.monkey_patch()
 
 import os
 import sys
@@ -16,8 +16,9 @@ import logging
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
 from flask_socketio import SocketIO, join_room, leave_room, emit, disconnect
+from flask_dance.contrib.google import make_google_blueprint, google
 
 # Configure logging for production
 logging.basicConfig(
@@ -35,8 +36,8 @@ app.config.update(
     SECRET_KEY=os.environ.get('SECRET_KEY', 'bro-meet-secret-key-change-in-production'),
     DEBUG=os.environ.get('FLASK_DEBUG', 'False').lower() == 'true',
     TESTING=False,
-    # Security headers
-    SESSION_COOKIE_SECURE=True,
+    # Security headers (disabled for development)
+    SESSION_COOKIE_SECURE=False,  # Set to True in production with HTTPS
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax'
 )
@@ -48,7 +49,7 @@ port = int(os.environ.get('PORT', 5000))
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
-    async_mode="eventlet",
+    async_mode="threading",
     logger=app.config['DEBUG'],
     engineio_logger=app.config['DEBUG'],
     ping_timeout=60,
@@ -57,6 +58,30 @@ socketio = SocketIO(
     allow_upgrades=True,
     transports=['websocket', 'polling']
 )
+
+# Google OAuth Configuration
+google_bp = make_google_blueprint(
+    client_id="1078000715877-o5migh7kbaiv59n7nndpej08f1t5gkg0.apps.googleusercontent.com",
+    client_secret="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",
+    scope=["openid", "email", "profile"]
+)
+
+# OAuth event handler - must be set before blueprint registration
+@google_bp.before_app_request
+def load_logged_in_user():
+    if google.authorized and 'google_user' not in session:
+        resp = google.get('/oauth2/v2/userinfo')
+        if resp.ok:
+            info = resp.json()
+            session['google_user'] = {
+                'id': info.get('id'),
+                'email': info.get('email'),
+                'name': info.get('name'),
+                'picture': info.get('picture')
+            }
+            logger.info(f"User {info.get('name')} ({info.get('email')}) logged in with Google")
+
+app.register_blueprint(google_bp, url_prefix="/login")
 
 # Store room participants and their info
 rooms = {}
@@ -189,6 +214,29 @@ def stop_screen_share(data):
     if room in rooms and rooms[room]["screen_sharer"] == user_id:
         rooms[room]["screen_sharer"] = None
         emit("screen-share-stopped", {"userId": user_id}, room=room)
+
+# Google OAuth Routes
+@app.route('/login')
+def login():
+    """Redirect to Google OAuth"""
+    return redirect(url_for('google.login'))
+
+# OAuth successful callback will be handled by Flask-Dance automatically
+# After successful auth, it will redirect to '/' by default
+
+@app.route('/logout')
+def logout():
+    """Logout user"""
+    session.pop('google_user', None)
+    flash('You have been logged out.', category='info')
+    return redirect(url_for('index'))
+
+@app.route('/api/user')
+def get_user():
+    """Get current logged-in user info"""
+    if 'google_user' in session:
+        return jsonify(session['google_user'])
+    return jsonify(None)
 
 # Health check endpoint for Render
 @app.route('/health')

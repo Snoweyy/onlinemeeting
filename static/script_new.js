@@ -1,4 +1,4 @@
-const socket = io("https://your-app-name.onrender.com");
+const socket = io();
 
 // Global variables
 let localStream;
@@ -532,4 +532,81 @@ function updateParticipantsList() {
 
 function isUserScreenSharing(userId) {
   return isScreenSharing && userId === currentUserId;
+}
+
+// Google OAuth Functions
+let currentUser = null;
+
+// Load user information on page load
+document.addEventListener('DOMContentLoaded', function() {
+  loadUserInfo();
+});
+
+function loadUserInfo() {
+  fetch('/api/user')
+    .then(response => response.json())
+    .then(user => {
+      currentUser = user;
+      updateAuthUI();
+      
+      // Auto-fill username if logged in
+      if (user && user.name) {
+        const usernameInput = document.getElementById('usernameInput');
+        if (!usernameInput.value) {
+          usernameInput.value = user.name;
+        }
+      }
+    })
+    .catch(error => {
+      console.error('Error loading user info:', error);
+    });
+}
+
+function updateAuthUI() {
+  const loggedInState = document.getElementById('loggedInState');
+  const loggedOutState = document.getElementById('loggedOutState');
+  
+  if (currentUser) {
+    // Show logged in state
+    loggedInState.style.display = 'block';
+    loggedOutState.style.display = 'none';
+    
+    // Update user info
+    document.getElementById('userName').textContent = currentUser.name;
+    document.getElementById('userEmail').textContent = currentUser.email;
+    document.getElementById('userAvatar').src = currentUser.picture || '';
+  } else {
+    // Show logged out state
+    loggedInState.style.display = 'none';
+    loggedOutState.style.display = 'block';
+  }
+}
+
+function loginWithGoogle() {
+  // Redirect to Google OAuth login
+  window.location.href = '/login';
+}
+
+function logout() {
+  // Redirect to logout endpoint
+  window.location.href = '/logout';
+}
+
+// Enhanced joinRoom function to use Google account info
+const originalJoinRoom = joinRoom;
+joinRoom = async function() {
+  // Use Google name if available and no name entered
+  const usernameInput = document.getElementById('usernameInput');
+  if (currentUser && currentUser.name && !usernameInput.value.trim()) {
+    usernameInput.value = currentUser.name;
+  }
+  
+  // Call original join room function
+  return originalJoinRoom.apply(this, arguments);
+};
+
+// Show flash messages if any
+function showFlashMessages() {
+  // This would be called if we had server-side flash messages
+  // For now, we'll handle messages via the authentication flow
 }
