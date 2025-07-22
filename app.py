@@ -294,6 +294,6 @@ if __name__ == "__main__":
         host='0.0.0.0',
         port=port,
         debug=app.config['DEBUG'],
-        use_reloader=False,  # Disable for production
+        use_reloader=True,  # Disable for production
         log_output=True
     )
