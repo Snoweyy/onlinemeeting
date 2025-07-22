@@ -12,15 +12,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, join_room, leave_room, emit, disconnect
-
-
-from authlib.integrations.flask_client import OAuth
-
-import secrets
-
-# OAuth config
 
 # Configure logging
 logging.basicConfig(
@@ -35,23 +28,9 @@ logger = logging.getLogger(__name__)
 # Initialize Flask app
 app = Flask(__name__)
 app.config.update(
-    SECRET_KEY=secrets.token_hex(32),
+    SECRET_KEY='test-secret-key',
     DEBUG=True
 )
-
-oauth = OAuth(app)
-google = oauth.register(
-    name='google',
-    client_id="1078000715877-o5migh7kbaiv59n7nndpej08f1t5gkg0.apps.googleusercontent.com",
-    client_secret='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',
-    access_token_url='https://oauth2.googleapis.com/token',
-    access_token_params=None,
-    authorize_url='https://accounts.google.com/o/oauth2/v2/auth',
-    authorize_params={'access_type': 'offline', 'prompt': 'consent'},
-    api_base_url='https://www.googleapis.com/oauth2/v3/',
-    client_kwargs={'scope': 'openid email profile'}
-)
-
 
 # Get port from environment
 port = int(os.environ.get('PORT', 5000))
