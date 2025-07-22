@@ -1,4 +1,4 @@
-const socket = io("https://your-app-name.onrender.com");
+const socket = io("https://onlinemeeting.onrender.com");
 
 // Global variables
 let localStream;

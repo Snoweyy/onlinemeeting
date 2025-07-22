@@ -61,8 +61,8 @@ socketio = SocketIO(
 
 # Google OAuth Configuration
 google_bp = make_google_blueprint(
-    client_id="1078000715877-o5migh7kbaiv59n7nndpej08f1t5gkg0.apps.googleusercontent.com",
-    client_secret="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",
+    client_id=os.environ.get('GOOGLE_CLIENT_ID', '1078000715877-o5migh7kbaiv59n7nndpej08f1t5gkg0.apps.googleusercontent.com'),
+    client_secret=os.environ.get('GOOGLE_CLIENT_SECRET', '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'),
     scope=["openid", "email", "profile"]
 )
 
