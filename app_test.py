@@ -212,11 +212,12 @@ if __name__ == "__main__":
     logger.info(f"Python version: {sys.version}")
     logger.info(f"Debug mode: {app.config['DEBUG']}")
     
+
     socketio.run(
         app,
         host='0.0.0.0',
-        port=port,
-        debug=app.config['DEBUG'],
-        use_reloader=True,
-        log_output=True
+        port=int(os.environ.get('PORT', 5000)),
+        debug=False,
+        use_reloader=False
     )
+
