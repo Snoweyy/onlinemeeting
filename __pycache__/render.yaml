@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: bro-meet-conference
+    runtime: python
+    plan: free
+    buildCommand: |
+      pip install --upgrade pip setuptools wheel
+      pip install -r requirements.txt
+    startCommand: "gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT wsgi:application"
+    healthCheckPath: /health
+    autoDeploy: true
+    environmentVariables:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: FLASK_DEBUG
+        value: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        value: 1078000715877-o5migh7kbaiv59n7nndpej08f1t5gkg0.apps.googleusercontent.com
+      - key: GOOGLE_CLIENT_SECRET
+        value: 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

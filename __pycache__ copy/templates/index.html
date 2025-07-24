@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>🎥 Bro Meet - Modern Video Conference</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #333;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .header h1 {
+      color: white;
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+    
+    .header p {
+      color: rgba(255,255,255,0.9);
+      font-size: 1.1rem;
+    }
+    
+    .join-section {
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(10px);
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+      text-align: center;
+      margin-bottom: 30px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .input-group {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    
+    input {
+      padding: 15px 20px;
+      font-size: 16px;
+      border: 2px solid #e1e5e9;
+      border-radius: 12px;
+      background: white;
+      min-width: 200px;
+      transition: all 0.3s ease;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    .btn {
+      padding: 15px 30px;
+      font-size: 16px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+    }
+    
+    .btn-success {
+      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      color: white;
+    }
+    
+    .btn-danger {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+      color: white;
+    }
+    
+    .btn-warning {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+    }
+    
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    .btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    
+    #status {
+      margin: 15px 0;
+      font-weight: 600;
+      font-size: 1.1rem;
+      padding: 10px;
+      border-radius: 8px;
+      background: rgba(102, 126, 234, 0.1);
+      color: #667eea;
+    }
+    
+    /* Screen Share Display */
+    .screen-share-container {
+      display: none;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(10px);
+      padding: 20px;
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+      margin-bottom: 30px;
+      border: 3px solid #11998e;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .screen-share-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #11998e, #38ef7d, #11998e);
+      animation: shimmer 2s linear infinite;
+    }
+    
+    @keyframes shimmer {
+      0% { background-position: -200px 0; }
+      100% { background-position: 200px 0; }
+    }
+    
+    .screen-share-container.active {
+      display: block;
+      animation: slideDown 0.5s ease-out;
+    }
+    
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .screen-share-header {
+      text-align: center;
+      margin-bottom: 15px;
+      color: #11998e;
+      font-weight: 700;
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: #ee5a52;
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    #screenShareVideo {
+      width: 100%;
+      max-width: 900px;
+      border-radius: 15px;
+      display: block;
+      margin: 0 auto;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    }
+    
+    /* Video Grid */
+    .video-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      margin-top: 30px;
+    }
+    
+    .video-container {
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(10px);
+      padding: 15px;
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+      text-align: center;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      border: 1px solid rgba(255,255,255,0.2);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .video-container:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+    }
+    
+    .video-container.local {
+      border: 2px solid #667eea;
+    }
+    
+    .video-container.local::before {
+      content: 'YOU';
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      background: #667eea;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      z-index: 10;
+    }
+    
+    .video-container video {
+      width: 100%;
+      height: 240px;
+      object-fit: cover;
+      border-radius: 12px;
+      background: #000;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .video-label {
+      margin-top: 12px;
+      font-weight: 600;
+      color: #333;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      background: #38ef7d;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    
+    .status-indicator.connecting {
+      background: #ffa726;
+      animation: blink 1s infinite;
+    }
+    
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0.3; }
+    }
+    
+    .connection-status {
+      position: absolute;
+      top: 10px;
+      left: 15px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      z-index: 10;
+    }
+    
+    .video-container.remote {
+      border: 2px solid #e1e5e9;
+    }
+    
+    .video-container.remote.connected {
+      border-color: #38ef7d;
+    }
+    
+    .video-container video:not([srcObject]) {
+      background: #212121;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    /* Controls */
+    .controls {
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(10px);
+      padding: 25px;
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+      margin: 30px 0;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .control-group {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    /* Participants List */
+    .participants-section {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 30px;
+      align-items: start;
+    }
+    
+    .participants-list {
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(10px);
+      padding: 20px;
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .participants-list h3 {
+      color: #667eea;
+      margin-bottom: 15px;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .participant-item {
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .participant-item:last-child {
+      border-bottom: none;
+    }
+    
+    .participant-avatar {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .input-group {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      input {
+        min-width: 280px;
+      }
+      
+      .video-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+      
+      .participants-section {
+        grid-template-columns: 1fr;
+      }
+      
+      .control-group {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .header h1 {
+        font-size: 2rem;
+      }
+    }
+    
+    /* Loading Animation */
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    /* Google OAuth Styles */
+    .user-status {
+      margin-bottom: 25px;
+    }
+    
+    .auth-state {
+      padding: 20px 0;
+    }
+    
+    .btn-google {
+      background: #db4437;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-transform: none;
+      letter-spacing: normal;
+      margin: 10px 0;
+    }
+    
+    .btn-google:hover {
+      background: #c23321;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(219, 68, 55, 0.4);
+    }
+    
+    .btn-logout {
+      background: #6c757d;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+    
+    .btn-logout:hover {
+      background: #5a6268;
+      transform: translateY(-1px);
+    }
+    
+    .divider {
+      margin: 20px 0;
+      position: relative;
+      text-align: center;
+    }
+    
+    .divider::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: #e1e5e9;
+      z-index: 1;
+    }
+    
+    .divider span {
+      background: rgba(255,255,255,0.95);
+      padding: 0 20px;
+      color: #666;
+      font-size: 14px;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      background: rgba(102, 126, 234, 0.1);
+      padding: 15px;
+      border-radius: 12px;
+      border: 1px solid rgba(102, 126, 234, 0.2);
+    }
+    
+    .user-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 2px solid #667eea;
+      object-fit: cover;
+    }
+    
+    .user-details {
+      flex: 1;
+      text-align: left;
+    }
+    
+    .user-name {
+      font-weight: 600;
+      font-size: 16px;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    
+    .user-email {
+      font-size: 14px;
+      color: #666;
+    }
+    
+    /* Flash Messages */
+    .flash-messages {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      max-width: 400px;
+    }
+    
+    .flash-message {
+      padding: 12px 20px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      font-weight: 500;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      animation: slideIn 0.3s ease-out;
+    }
+    
+    .flash-message.success {
+      background: #d4edda;
+      color: #155724;
+      border-left: 4px solid #28a745;
+    }
+    
+    .flash-message.error {
+      background: #f8d7da;
+      color: #721c24;
+      border-left: 4px solid #dc3545;
+    }
+    
+    .flash-message.info {
+      background: #cce7ff;
+      color: #0c4a6e;
+      border-left: 4px solid #0ea5e9;
+    }
+    
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(100%);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><i class="fas fa-video"></i> Bro Meet</h1>
+      <p>Modern Multi-User Video Conference Platform</p>
+    </div>
+    
+    <div class="join-section">
+      <!-- User Login Status -->
+      <div id="userStatus" class="user-status">
+        <div id="loggedOutState" class="auth-state">
+          <p>Sign in with Google for a better experience</p>
+          <button class="btn btn-google" onclick="loginWithGoogle()">
+            <i class="fab fa-google"></i> Sign in with Google
+          </button>
+          <div class="divider">
+            <span>or continue as guest</span>
+          </div>
+        </div>
+        
+        <div id="loggedInState" class="auth-state" style="display: none;">
+          <div class="user-info">
+            <img id="userAvatar" class="user-avatar" src="" alt="User">
+            <div class="user-details">
+              <div id="userName" class="user-name"></div>
+              <div id="userEmail" class="user-email"></div>
+            </div>
+            <button class="btn btn-logout" onclick="logout()">
+              <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Meeting Join Interface -->
+      <div class="input-group">
+        <input type="text" id="usernameInput" placeholder="✨ Enter your name">
+        <input type="text" id="roomInput" placeholder="🏠 Enter Room ID">
+      </div>
+      <button class="btn btn-primary" onclick="joinRoom()">
+        <i class="fas fa-sign-in-alt"></i> Join Meeting
+      </button>
+      <div id="status">Enter your name and room ID to start</div>
+    </div>
+    
+    <!-- Screen Share Display (Pinned) -->
+    <div id="screenShareContainer" class="screen-share-container">
+      <div class="screen-share-header">
+        <i class="fas fa-desktop"></i>
+        <span class="pulse-dot"></span>
+        <span id="screenSharerName">Screen Share</span> is sharing their screen
+      </div>
+      <video id="screenShareVideo" autoplay></video>
+    </div>
+    
+    <div class="participants-section">
+      <div class="main-content">
+        <!-- Controls -->
+        <div class="controls" id="meetingControls" style="display: none;">
+          <div class="control-group">
+            <button class="btn btn-primary" onclick="toggleMic()">
+              <i class="fas fa-microphone"></i> <span id="micStatus">Mic On</span>
+            </button>
+            <button class="btn btn-primary" onclick="toggleCamera()">
+              <i class="fas fa-video"></i> <span id="cameraStatus">Video On</span>
+            </button>
+            <button class="btn btn-success" id="shareScreenBtn" onclick="shareScreen()">
+              <i class="fas fa-desktop"></i> Share Screen
+            </button>
+            <button class="btn btn-danger" id="stopShareBtn" onclick="stopScreenShare()" style="display: none;">
+              <i class="fas fa-stop"></i> Stop Sharing
+            </button>
+            <button class="btn btn-warning" onclick="leaveRoom()">
+              <i class="fas fa-sign-out-alt"></i> Leave Meeting
+            </button>
+          </div>
+        </div>
+        
+        <!-- Video Grid for Participants -->
+        <div id="videoGrid" class="video-grid">
+          <!-- Videos will be dynamically added here -->
+        </div>
+      </div>
+      
+      <!-- Participants List -->
+      <div id="participantsList" class="participants-list" style="display: none;">
+        <h3><i class="fas fa-users"></i> Participants <span id="participantCount" class="pulse-dot"></span></h3>
+        <div id="participantsContent"></div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="/static/script_new.js"></script>
+</body>
+</html>
