@@ -43,7 +43,7 @@ app.config.update(
 )
 
 # Get port from environment (Render sets PORT)
-port = int(os.environ.get('PORT', 5000))
+port = int(os.environ.get('PORT', 8000))
 
 # Initialize SocketIO with production-ready configuration
 socketio = SocketIO(
@@ -292,7 +292,7 @@ if __name__ == "__main__":
     socketio.run(
         app,
         host='0.0.0.0',
-        port=int(os.environ.get('PORT', 5000)),
+        port=port,
         debug=False,
         use_reloader=False
     )

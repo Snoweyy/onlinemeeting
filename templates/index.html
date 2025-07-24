@@ -51,6 +51,19 @@
       text-align: center;
       margin-bottom: 30px;
       border: 1px solid rgba(255,255,255,0.2);
+      transition: all 0.5s ease;
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    .join-section.hidden {
+      opacity: 0;
+      transform: translateY(-20px);
+      pointer-events: none;
+      margin-bottom: 0;
+      padding: 0;
+      max-height: 0;
+      overflow: hidden;
     }
     
     .input-group {
@@ -701,7 +714,12 @@
     </div>
   </div>
   
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script src="/static/script_new.js"></script>
+  <script src="/static/firebase-auth.js"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-const socket = io("https://onlinemeeting.onrender.comg");
+const socket = io("https://onlinemeeting.onrender.com");
 
 // Global variables
 let localStream;
@@ -54,6 +54,10 @@ async function joinRoom() {
     // Show controls and create local video
     document.getElementById('meetingControls').style.display = 'block';
     document.getElementById('participantsList').style.display = 'block';
+    
+    // Hide the join section with smooth animation since user has joined
+    document.querySelector('.join-section').classList.add('hidden');
+    
     createLocalVideoElement();
     
   } catch (error) {
@@ -483,21 +487,58 @@ function toggleCamera() {
 function leaveRoom() {
   // Close all peer connections
   Object.values(peerConnections).forEach(pc => pc.close());
+  peerConnections = {};
   
   // Stop all streams
   if (localStream) {
     localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
   }
   if (screenStream) {
     screenStream.getTracks().forEach(track => track.stop());
+    screenStream = null;
   }
   
   // Leave room
-  socket.emit('leave-room', { room: roomId, userId: currentUserId });
+  if (roomId && currentUserId) {
+    socket.emit('leave-room', { room: roomId, userId: currentUserId });
+  }
   
-  // Reload page
-  updateStatus("👋 Leaving meeting...", 'info');
-  setTimeout(() => window.location.reload(), 1000);
+  // Clean up UI
+  document.getElementById('meetingControls').style.display = 'none';
+  document.getElementById('participantsList').style.display = 'none';
+  document.getElementById('screenShareContainer').classList.remove('active');
+  
+  // Clear video grid
+  const videoGrid = document.getElementById('videoGrid');
+  videoGrid.innerHTML = '';
+  
+  // Clear participants
+  Object.keys(participants).forEach(userId => delete participants[userId]);
+  
+  // Reset screen sharing state
+  isScreenSharing = false;
+  document.getElementById('shareScreenBtn').style.display = 'inline-flex';
+  document.getElementById('stopShareBtn').style.display = 'none';
+  
+  // Show join section back with animation
+  const joinSection = document.querySelector('.join-section');
+  joinSection.classList.remove('hidden');
+  
+  // Reset room field only (preserve username if user is logged in with Firebase)
+  document.getElementById('roomInput').value = '';
+  
+  // Only clear username if user is not logged in with Firebase
+  if (typeof window.firebaseUser === 'function' && !window.firebaseUser()) {
+    document.getElementById('usernameInput').value = '';
+  }
+  
+  // Reset global variables
+  roomId = null;
+  currentUserId = null;
+  currentUsername = null;
+  
+  updateStatus("👋 Left the meeting. Ready to join another!", 'info');
 }
 
 // Helper functions
@@ -534,79 +575,4 @@ function isUserScreenSharing(userId) {
   return isScreenSharing && userId === currentUserId;
 }
 
-// Google OAuth Functions
-let currentUser = null;
-
-// Load user information on page load
-document.addEventListener('DOMContentLoaded', function() {
-  loadUserInfo();
-});
-
-function loadUserInfo() {
-  fetch('/api/user')
-    .then(response => response.json())
-    .then(user => {
-      currentUser = user;
-      updateAuthUI();
-      
-      // Auto-fill username if logged in
-      if (user && user.name) {
-        const usernameInput = document.getElementById('usernameInput');
-        if (!usernameInput.value) {
-          usernameInput.value = user.name;
-        }
-      }
-    })
-    .catch(error => {
-      console.error('Error loading user info:', error);
-    });
-}
-
-function updateAuthUI() {
-  const loggedInState = document.getElementById('loggedInState');
-  const loggedOutState = document.getElementById('loggedOutState');
-  
-  if (currentUser) {
-    // Show logged in state
-    loggedInState.style.display = 'block';
-    loggedOutState.style.display = 'none';
-    
-    // Update user info
-    document.getElementById('userName').textContent = currentUser.name;
-    document.getElementById('userEmail').textContent = currentUser.email;
-    document.getElementById('userAvatar').src = currentUser.picture || '';
-  } else {
-    // Show logged out state
-    loggedInState.style.display = 'none';
-    loggedOutState.style.display = 'block';
-  }
-}
-
-function loginWithGoogle() {
-  // Redirect to Google OAuth login
-  window.location.href = '/login';
-}
-
-function logout() {
-  // Redirect to logout endpoint
-  window.location.href = '/logout';
-}
-
-// Enhanced joinRoom function to use Google account info
-const originalJoinRoom = joinRoom;
-joinRoom = async function() {
-  // Use Google name if available and no name entered
-  const usernameInput = document.getElementById('usernameInput');
-  if (currentUser && currentUser.name && !usernameInput.value.trim()) {
-    usernameInput.value = currentUser.name;
-  }
-  
-  // Call original join room function
-  return originalJoinRoom.apply(this, arguments);
-};
-
-// Show flash messages if any
-function showFlashMessages() {
-  // This would be called if we had server-side flash messages
-  // For now, we'll handle messages via the authentication flow
-}
+// Note: Google OAuth functions are now handled by firebase-auth.js
