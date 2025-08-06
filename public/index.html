@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 Music Room - Listen Together</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎵 Music Room</h1>
+            <p>Listen to music together with your friends!</p>
+        </header>
+
+        <!-- Login Section -->
+        <div id="login-section" class="section">
+            <div class="form-group">
+                <input type="text" id="username" placeholder="Enter your username" maxlength="20">
+            </div>
+            <div class="form-group">
+                <input type="text" id="room-id" placeholder="Enter room ID (or create new one)" maxlength="20">
+            </div>
+            <button id="join-room-btn" class="btn primary">Join Room</button>
+        </div>
+
+        <!-- Main Music Room Interface -->
+        <div id="music-room" class="section" style="display: none;">
+            <div class="room-info">
+                <h2>Room: <span id="current-room"></span></h2>
+                <div class="users-online">
+                    <h3>Online Users (<span id="user-count">0</span>)</h3>
+                    <div id="users-list"></div>
+                </div>
+            </div>
+
+            <!-- Music Player -->
+            <div class="music-player">
+                <div class="now-playing">
+                    <div id="current-song-info">
+                        <h3 id="song-title">No song playing</h3>
+                        <div class="progress-bar">
+                            <div id="progress"></div>
+                        </div>
+                        <div class="time-info">
+                            <span id="current-time">0:00</span> / <span id="duration">0:00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button id="play-btn" class="btn control">▶️ Play</button>
+                    <button id="pause-btn" class="btn control">⏸️ Pause</button>
+                    <button id="next-btn" class="btn control">⏭️ Next</button>
+                </div>
+
+                <audio id="audio-player" preload="auto"></audio>
+            </div>
+
+            <!-- Upload Section -->
+            <div class="upload-section">
+                <h3>Add Music to Room</h3>
+                
+                <!-- URL Input -->
+                <div class="url-form">
+                    <h4>📺 Add from YouTube/Spotify</h4>
+                    <div class="url-input-group">
+                        <input type="text" id="url-input" placeholder="Paste YouTube or Spotify URL here...">
+                        <button id="add-url-btn" class="btn primary">Add URL</button>
+                    </div>
+                    <p class="url-info">Support for YouTube videos and Spotify tracks</p>
+                </div>
+                
+                <div class="separator">OR</div>
+                
+                <!-- File Upload -->
+                <div class="file-upload-form">
+                    <h4>📁 Upload Audio File</h4>
+                    <div class="upload-form">
+                        <input type="file" id="file-input" accept="audio/*">
+                        <input type="text" id="song-title-input" placeholder="Song title (optional)">
+                        <button id="upload-btn" class="btn primary">Upload Song</button>
+                    </div>
+                    <div id="upload-progress" style="display: none;">
+                        <div class="progress-bar">
+                            <div id="upload-progress-bar"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Playlist -->
+            <div class="playlist-section">
+                <h3>Playlist (<span id="playlist-count">0</span> songs)</h3>
+                <div id="playlist" class="playlist"></div>
+            </div>
+
+            <!-- Chat/Messages -->
+            <div class="messages-section">
+                <h3>Room Messages</h3>
+                <div id="messages" class="messages"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
