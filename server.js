@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -7,20 +8,103 @@ const multer = require('multer');
 const fs = require('fs');
 const ytdl = require('ytdl-core');
 const axios = require('axios');
+const helmet = require('helmet');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
+const winston = require('winston');
+
+// Configure logger
+const logger = winston.createLogger({
+  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  defaultMeta: { service: 'musicroom' },
+  transports: [
+    new winston.transports.File({ filename: './logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: './logs/combined.log' })
+  ]
+});
+
+// Add console transport for development
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: winston.format.simple()
+  }));
+}
 
 const app = express();
 const server = http.createServer(app);
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 const io = socketIo(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
+    origin: process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'production' ? false : "*"),
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
-// Middleware
-app.use(cors());
+// Create logs directory if it doesn't exist
+const logsDir = path.join(__dirname, 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
+
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "wss:", "ws:"],
+      mediaSrc: ["'self'", "https:", "blob:"]
+    }
+  }
+}));
+
+// Compression middleware
+app.use(compression());
+
+// Rate limiting
+app.use('/api/', limiter);
+app.use('/upload', limiter);
+app.use('/process-youtube', limiter);
+app.use('/process-spotify', limiter);
+
+// CORS middleware
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'production' ? false : "*"),
+  credentials: true
+}));
+
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Static files
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json());
+
+// Request logging middleware
+app.use((req, res, next) => {
+  logger.info(`${req.method} ${req.url}`, {
+    ip: req.ip,
+    userAgent: req.get('User-Agent')
+  });
+  next();
+});
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -40,6 +124,9 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
   storage: storage,
+  limits: {
+    fileSize: parseInt(process.env.MAX_FILE_SIZE) || 50 * 1024 * 1024 // 50MB default
+  },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('audio/')) {
       cb(null, true);
@@ -119,6 +206,17 @@ class Room {
 // Routes
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    version: require('./package.json').version
+  });
 });
 
 app.post('/upload', upload.single('audio'), (req, res) => {
@@ -212,7 +310,7 @@ app.post('/process-youtube', async (req, res) => {
 
     res.json(song);
   } catch (error) {
-    console.error('YouTube processing error:', error);
+    logger.error('YouTube processing error:', error);
     res.status(500).json({ error: 'Failed to process YouTube URL' });
   }
 });
@@ -247,14 +345,25 @@ app.post('/process-spotify', async (req, res) => {
 
     res.json(song);
   } catch (error) {
-    console.error('Spotify processing error:', error);
+    logger.error('Spotify processing error:', error);
     res.status(500).json({ error: 'Failed to process Spotify URL' });
   }
 });
 
+// Global error handlers
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
 // Socket.IO connection handling
 io.on('connection', (socket) => {
-  console.log('New user connected:', socket.id);
+  logger.info('New user connected:', socket.id);
 
   socket.on('join-room', (data) => {
     const { roomId, username } = data;
@@ -293,7 +402,7 @@ io.on('connection', (socket) => {
     // Notify other users in the room
     socket.to(roomId).emit('user-joined', { username, users: Array.from(room.users) });
     
-    console.log(`User ${username} joined room ${roomId}`);
+    logger.info(`User ${username} joined room ${roomId}`);
   });
 
   socket.on('add-song', (song) => {
@@ -312,7 +421,7 @@ io.on('connection', (socket) => {
       addedBy: userInfo.username
     });
 
-    console.log(`Song added to room ${userInfo.roomId}:`, song.title);
+    logger.info(`Song added to room ${userInfo.roomId}:`, song.title);
   });
 
   socket.on('play-song', () => {
@@ -368,7 +477,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
+    logger.info('User disconnected:', socket.id);
     
     const userInfo = connectedUsers.get(socket.id);
     if (userInfo) {
@@ -395,6 +504,12 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`🎵 Music Room server running on port ${PORT}`);
-  console.log(`🌐 Open http://localhost:${PORT} in your browser`);
+  logger.info(`🎵 Music Room server running on port ${PORT}`);
+  logger.info(`🌐 Server ready at http://localhost:${PORT}`);
+  
+  if (process.env.NODE_ENV === 'production') {
+    logger.info('🚀 Running in PRODUCTION mode');
+  } else {
+    logger.info('🔧 Running in DEVELOPMENT mode');
+  }
 });
